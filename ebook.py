@@ -22,27 +22,20 @@
 
 import zipfile
 import xml.etree.ElementTree as etree
-import os
 
 class Book:
 
-    """ Input should be {name}.{format} Currently, only epub is supported """
-    def __init__(self, name, format, ):
+    def __init__(self, name, fileformat, ):
         self.name = name
-        self.format = format
+        self.format = fileformat
         self.chapters = []
         self.meta = {}
 
-        self.container_xml = ''
-        self.content_opf = ''
         self.file = zipfile.ZipFile(self.name + "." + self.format, "w")
 
-    """ Build """
     def build(self):
-        self.initEpub()
-        self.file.close()
+        self.file.writestr("mimetype", "application/epub+zip")
 
-    def generate_container_XML(self):
         container = etree.Element("container")
 
         container.attrib['version'] = "1.0"
@@ -54,7 +47,15 @@ class Book:
         rootfile.attrib['full-path'] = "assets/content.opf"
         rootfile.attrib['media-type'] = "application/oebps-package+xml"
 
-        return etree.tostring(container, encoding="UTF-8")
+        self.file.writestr("META-INF/container.xml", etree.tostring(container, encoding="UTF-8"))
+        self.file.writestr("assets/content.opf", self.generate_content_opf())
+
+        for index in self.chapters:
+            f = open(index)
+            self.file.write(f.name, "assets/"+f.name)
+            print("writing " + f.name + " to zip")
+
+        self.file.close()
 
     def generate_content_opf(self):
         pkg = etree.Element("package")
@@ -81,17 +82,3 @@ class Book:
             ch_spine.attrib['idref'] = ch.attrib['id']
 
         return etree.tostring(pkg, encoding="UTF-8")
-
-    """ Initialize file for Epub """
-    def initEpub(self):
-        self.content_opf = self.generate_content_opf()
-        self.container_xml = self.generate_container_XML()
-        self.file.writestr("mimetype", "application/epub+zip")
-
-        self.file.writestr("META-INF/container.xml", self.container_xml)
-        self.file.writestr("assets/content.opf", self.content_opf)
-
-        for index in self.chapters:
-            f = open(index)
-            self.file.write(f.name, "assets/"+f.name)
-            print("writing " + f.name + " to zip")
