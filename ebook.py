@@ -29,56 +29,63 @@ class Book:
         self.name = name
         self.format = fileformat
         self.chapters = []
+        self.assets = []
         self.meta = {}
-
-        self.file = zipfile.ZipFile(self.name + "." + self.format, "w")
+        self.file = None
 
     def build(self):
-        self.file.writestr("mimetype", "application/epub+zip")
+        if self.format == "epub":
+            self.file = zipfile.ZipFile(self.name + "." + self.format, "w")
 
-        container = etree.Element("container")
+            self.file.writestr("mimetype", "application/epub+zip")
 
-        container.attrib['version'] = "1.0"
-        container.attrib['xmlns'] = "urn:oasis:names:tc:opendocument:xmlns:container"
+            # Generate container.xml
 
-        rootfiles = etree.SubElement(container, "rootfiles")
+            container = etree.Element("container")
 
-        rootfile = etree.SubElement(rootfiles, "rootfile")
-        rootfile.attrib['full-path'] = "assets/content.opf"
-        rootfile.attrib['media-type'] = "application/oebps-package+xml"
+            container.attrib['version'] = "1.0"
+            container.attrib['xmlns'] = "urn:oasis:names:tc:opendocument:xmlns:container"
 
-        self.file.writestr("META-INF/container.xml", etree.tostring(container, encoding="UTF-8"))
-        self.file.writestr("assets/content.opf", self.generate_content_opf())
+            rootfiles = etree.SubElement(container, "rootfiles")
 
-        for index in self.chapters:
-            f = open(index)
-            self.file.write(f.name, "assets/"+f.name)
-            print("writing " + f.name + " to zip")
+            rootfile = etree.SubElement(rootfiles, "rootfile")
+            rootfile.attrib['full-path'] = "assets/content.opf"
+            rootfile.attrib['media-type'] = "application/oebps-package+xml"
 
-        self.file.close()
+            self.file.writestr("META-INF/container.xml", etree.tostring(container, encoding="UTF-8"))
 
-    def generate_content_opf(self):
-        pkg = etree.Element("package")
-        pkg.attrib['version'] = "2.0"
-        pkg.attrib['xmlns'] = "http://www.idpf.org/2007/opf"
-        pkg.attrib['unique-identifier'] = self.name
+            # Generate content.opf
 
-        meta = etree.SubElement(pkg, "metadata")
+            pkg = etree.Element("package")
 
-        for index in meta.items():
-            dc = etree.SubElement(pkg, "dc:" + index[0])
-            dc.text = index[1]
+            pkg.attrib['version'] = "2.0"
+            pkg.attrib['xmlns'] = "http://www.idpf.org/2007/opf"
+            pkg.attrib['unique-identifier'] = self.name
 
-        manifest = etree.SubElement(pkg, "manifest")
-        spine = etree.SubElement(pkg, "spine")
-        spine.attrib['toc'] = "ncx"
-        for index in self.chapters:
-            ch = etree.SubElement(manifest, "item")
-            ch.attrib['id'] = index.split('.')[0]
-            ch.attrib['href'] = "" + index
-            ch.attrib['media-type'] = "application/xhtml+xml"
+            metadata = etree.SubElement(pkg, "metadata")
+            for index in self.meta.items():
+                dc = etree.SubElement(metadata, "dc:" + index[0])
+                dc.text = index[1]
 
-            ch_spine = etree.SubElement(spine, "itemref")
-            ch_spine.attrib['idref'] = ch.attrib['id']
+            manifest = etree.SubElement(pkg, "manifest")
 
-        return etree.tostring(pkg, encoding="UTF-8")
+            spine = etree.SubElement(pkg, "spine")
+            spine.attrib['toc'] = "ncx"
+            
+            for index in self.chapters:
+                item = etree.SubElement(manifest, "item")
+                item.attrib['id'] = index.name.split('.')[0]
+                item.attrib['href'] = index.name
+                item.attrib['media-type'] = "application/xhtml+xml"
+
+                spine_item = etree.SubElement(spine, "itemref")
+                spine_item.attrib['idref'] = item.attrib['id']
+
+            self.file.writestr("assets/content.opf", etree.tostring(pkg, encoding="UTF-8"))
+
+            # Write chapters to epub
+            for assets in self.chapters + self.assets:
+                self.file.write(assets.name, "assets/" + assets.name)
+                print("writing " + assets.name + " to zip")
+
+            self.file.close()

@@ -13,7 +13,8 @@ book.meta['language'] = "en"
 book.meta['creator'] = "Skyshayde"
 book.meta['identifier'] = "12345"
 
-book.chapters = ["ch1.html", "ch2.html"]
+book.chapters = [open("ch1.html"), open("ch2.html")]
+book.assets = [open("cover.png"), open("ch1_pic.png")]
 
 book.build()
 ```
