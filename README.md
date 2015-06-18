@@ -4,9 +4,9 @@ Module to create an ebook, designed for simplicity.  At the moment, all it suppo
 # Usage
 
 ```
-import ebook
+from libebook import Book
 
-book = ebook.Book("{filename}", "epub")
+book = Book("{filename}", "epub")
 
 book.meta['title'] = "Title goes here"
 book.meta['language'] = "en"
